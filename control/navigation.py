@@ -11,11 +11,11 @@ class NavigationUnit:
         
         # local components
         self._heading_ctrl = BasicPIDControl(
-            vehicle_constants.pid_heading_gain_p,
-            vehicle_constants.pid_heading_gain_i,
-            vehicle_constants.pid_heading_gain_d,
-            vehicle_constants.heading_dead_zone,
-            vehicle_constants.heading_max_response,
+            vehicle_constants.gainp,
+            vehicle_constants.gaini,
+            vehicle_constants.gaind,
+            vehicle_constants.dead_zone,
+            vehicle_constants.max_response,
         )
         
         self._kalman_filter = KalmanFilter()
@@ -97,10 +97,10 @@ class NavigationUnit:
 class BasicPIDControl:
     """ Basic discrete PID controller for supplied gain. """
 
-    def __init__(self, gain_p=0.0, gain_i=0.0, gain_d=0.0, dead_zone=None, max_response=None):
-        self.gain_p = gain_p
-        self.gain_i = gain_i
-        self.gain_d = gain_d
+    def __init__(self, gainp=0.0, gaini=0.0, gaind=0.0, dead_zone=None, max_response=None):
+        self.gainp = gainp
+        self.gaini = gaini
+        self.gaind = gaind
         self.dead_zone = dead_zone
         self.max_response = max_response
         self.integrated_error = 0.0
@@ -108,13 +108,13 @@ class BasicPIDControl:
 
     def update(self, v_d, v_m, dt):
         error = v_d - v_m
-        p = self.gain_p * error
+        p = self.gainp * error
 
         self.integrated_error += error * dt
-        i = self.gain_i * self.integrated_error
+        i = self.gaini * self.integrated_error
 
         d_error = (error - self.last_error) / dt
-        d = self.gain_d * d_error
+        d = self.gaind * d_error
         self.last_error = error
 
         response = p + i + d
