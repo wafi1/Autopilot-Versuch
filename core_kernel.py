@@ -257,10 +257,4 @@ class FishPiKernel:
         """ Commands the NavigationUnit to set and hold a given heading. """
         self._navigation_unit.set_heading(heading)
     
-
-    
-    def halt(self):
-        """ Commands the NavigationUnit and Drive Control to Halt! """
-        self._navigation_unit.stop()
-        self._drive_controller.halt()
     
