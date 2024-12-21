@@ -5,7 +5,7 @@ class NavigationUnit:
     """ Coordinator between perception, navigation commands, and drive control. """
     
     def __init__(self, perception_unit, drive_controller, vehicle_constants):
-        self._perception_unit = perception_unit
+        self._perception_unit = perceptionunit
         self._drive_controller = drive_controller
         self._vehicle_constants = vehicle_constants
         
@@ -34,7 +34,7 @@ class NavigationUnit:
 
         # Sensor readings
         observed_heading = self._perception_unit.observed_heading
-        observed_rudder = self._perception_unit.observed_rudder
+        observed_rudder = self._perception_unit.observed_ruder
         desired_heading = self._desired_heading
 
         # Apply Kalman filter to observed heading
