@@ -248,78 +248,9 @@ class FishPiConfig(object):
                 self.drive_controller = DummyDriveController()
             return "DRIVECONTROLLER", self.drive_controller
         
-        elif addr == 0x32:
-            # DriveController (using RaspyJuice)
-            try:
-                from vehicle.drive_controller import PyJuiceDriveController
-                # TODO pwm addresses from config?
-                self.drive_controller = PyJuiceDriveController(i2c_addr=addr, i2c_bus=raspberrypi.i2c_bus(), debug=debug)
-            except Exception as ex:
-                logging.info("CFG:\tError setting up DRIVECONTROLLER over i2c - %s" % ex)
-                self.drive_controller = DummyDriveController()
-            return "DRIVECONTROLLER", self.drive_controller
-                
-        elif addr == 0x53 or addr == 0x1D:
-            # 0x53 when ALT connected to HIGH
-            # 0x1D when ALT connected to LOW
-            return "ACCELEROMETER", "Driver not loaded - ADXL345"
-                
-        elif addr == 0x69:
-            # 0x68 when AD0 connected to LOW - conflicts with DS1307!
-            # 0x69 when AD0 connected to HIGH
-            return "GYRO", "Driver not loaded - ITG3200"
                 
         else:
             return "unknown", None
-
-    def scan_i2c(self, debug=False):
-        """scans i2c port returning a list of detected addresses.
-            Requires sudo access.
-            Returns True for in use by a device already (ie UU observed)"""
-        
-        import raspberrypi
-	
-        proc = subprocess.Popen(['sudo', 'i2cdetect', '-y', '1'], 
-                stdout = subprocess.PIPE,
-                close_fds = True)
-        std_out_txt, std_err_txt = proc.communicate()
-        std_out_txt = std_out_txt.decode('utf-8')
-
-        if debug:
-            logging.debug(std_out_txt)
-            logging.debug(std_err_txt)
-        
-        # TODO could probably be neater with eg format or regex
-        # i2c returns
-        #  -- for unused addresses
-        #  UU for addresses n use by a device
-        #  0x03 to 0x77 for detected addresses
-        # need to keep columns if care about UU devices
-        addr = []
-        lines = std_out_txt.rstrip().split("\n")
-        
-        
-        if "command not found" in std_out_txt:
-            raise RuntimeError("i2cdetect not found")
-        
-        for i in range(0,8):
-            for j in range(0,16):
-                idx_i = i+1
-                idx_j = j*3+4
-                cell = lines[idx_i][idx_j:idx_j+2].strip()
-                if cell and cell != "--":
-                    logging.info("    ...device at: %s %s", hex(16*i+j), cell)
-                    hexAddr = 16*i+j
-                    if cell == "UU":
-                        addr.append([hexAddr, True])
-                    else:
-                        addr.append([hexAddr, False])
-        
-        return addr
-
-    def set_dummy_devices(self):
-        """ Initialises 'dummy' devices that usually just log on actions. """
-        self.drive_controller = DummyDriveController()
 
 
 class DummyCameraController(object):
