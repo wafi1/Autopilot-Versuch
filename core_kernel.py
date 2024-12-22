@@ -4,7 +4,7 @@ from i2c_comm import I2CComm
 from localconfig import FishPiConfig
 from model_data import POCVModelData
 from control.navigation import NavigationUnit
-from perception.world import PerceptionUnit
+from perception.world import Perception_Unit
 
 
 class FishPiKernel:
@@ -40,12 +40,24 @@ class FishPiKernel:
         self._tasten_sensor = config.tasten_sensor
         self._vehicle_constants = config.vehicle_constants
         self._drive_controller = config.drive_controller
+
+        #if config.drive_controller is None:
+        #    logging.error("Drive_Controller wurde im Kernel nicht initialisiert!")
+        #return
+        
+        #self._drive_controller = config.drive_controller
+        #logging.info("Drive_Controller erfolgreich zugewiesen.")
+        #device_name, controller = self._drive_controller.lookup(0x21)
+        #if controller:
+        #    logging.info("Drive_Controller erfolgreich gefunden und bereit.")
+        #else:
+        #    logging.error("Drive_Controller konnte nicht gefunden werden.")
         
         # Datenklasse
         self.data = POCVModelData()
         
         # Unterstützende Einheiten
-        self._perception_unit = PerceptionUnit(self._vehicle_constants, self.data)
+        self._perception_unit = Perception_Unit(self._vehicle_constants, self.data)
         self._navigation_unit = NavigationUnit(self._perception_unit, self._drive_controller, self._vehicle_constants)
         
     def update(self):
@@ -56,6 +68,7 @@ class FishPiKernel:
         self.correct_mode()
         self._perception_unit.update(self.data)
         self._navigation_unit.update()
+        #self._drive_controller.update()
 
    # def i2c_write(self, iodira, gpioa):
    #     """Hilfsmethode, um Daten auf den I2C-Bus zu schreiben."""
