@@ -7,9 +7,14 @@ import platform
 import subprocess
 import time
 import RPi.GPIO as GPIO
+from vehicle.drive_controller import Drive_Controller
+from sensor.Tasten import TASTEN_Sensor
+from sensor.ruderlage import ruderlage_Sensor
+
+
+logging.error(f"Fehler bei der Initialisierung des Drive_Controllers: {e}")
 
 class FishPiConfig(object):
-
     _devices = []
     _root_dir = os.path.join(os.getenv("HOME"), "fishpi")
 
@@ -18,31 +23,30 @@ class FishPiConfig(object):
         logger.setLevel(logging.DEBUG)
         console = logging.StreamHandler()
         logger.addHandler(console)
-        
-        if os.path.exists(self.config_file):
-            pass
-        
+
+        # Verzeichnisstruktur erstellen
         if not os.path.exists(self._root_dir):
             os.makedirs(self._root_dir)
-        if not os.path.exists(self.navigation_data_path):
-            os.makedirs(self.navigation_data_path)
-        if not os.path.exists(self.logs_path):
-            os.makedirs(self.logs_path)
 
-        log_file_stem = os.path.join(self.logs_path, 'fishpi_%s.log' % time.strftime('%Y%m%d_%H%M%S'))
+        log_file_stem = os.path.join(self._root_dir, 'fishpi_%s.log' % time.strftime('%Y%m%d_%H%M%S'))
         handler = logging.handlers.RotatingFileHandler(log_file_stem, backupCount=50)
         formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
-        self.compass_sensor = None
-        self.drive_controller = None
-        self.udp_sensor = None
-        self.ruder_sensor = None
+        # Geräte initialisieren
+        self.shared_i2c_bus = smbus.SMBus(1)
+        try:
+            self.drive_controller = Drive_Controller(i2c_bus=self.shared_i2c_bus, debug=True)
+            logging.info("Drive_Controller erfolgreich initialisiert.")
+        except Exception as e:
+            logging.error(f"Fehler bei der Initialisierung des Drive_Controllers: {e}")
+            self.drive_controller = None  # Als Fallback auf None setzen
+
         self.tasten_sensor = None
-        self.show_wp = None
-        self.show_wi = None
-        self.show_wd = None
+        self.ruder_sensor = None
+        self.compass_sensor = None
+        self.udp_sensor = None
 
         self._vehicle_constants = VehicleConstants()
 
@@ -109,8 +113,6 @@ class FishPiConfig(object):
         except Exception as ex:
             logging.info("CFG:\tcompass-Support nicht verfügbar - %s" % ex)
 
-        if not self.drive_controller:
-            self.drive_controller = DummyDriveController()
             
     def scan_i2c(self, debug=False):
         """ Scannt den I2C-Bus und gibt eine Liste von erkannten Geräten zurück. """
@@ -170,50 +172,40 @@ class FishPiConfig(object):
             logging.debug("CFG:\tChecking for driver for device at i2c %s" % addr)
 
         import raspberrypi
-
-        if addr == 0x68:
-            try:
-                from sensor.ruderlage import ruderlage_Sensor
-                self.ruder_sensor = ruderlage_Sensor(i2c_bus=1, debug=debug)
-            except Exception as ex:
-                logging.warning("CFG:\tError setting up Ruderlage over i2c - %s" % ex)
-            return "Ruderlage", self.ruder_sensor
-
-        elif addr == 0x20:
+        from smbus import SMBus
+        # In configure_devices oder lookup:
+        shared_i2c_bus = SMBus(1)  # Einmalig erzeugen und weitergeben
+        
+        if addr == 0x20:
             try:
                 from sensor.Tasten import TASTEN_Sensor
-                self.tasten_sensor = TASTEN_Sensor(i2c_bus=1, debug=debug)
+                self.tasten_sensor = TASTEN_Sensor(i2c_bus=shared_i2c_bus, debug=debug)
             except Exception as ex:
                 logging.warning("CFG:\tError setting up Tasten over i2c - %s" % ex)
             return "Tasten", self.tasten_sensor
 
-        elif addr == 0x21:
+        if addr == 0x21:  # Adresse für den Drive_Controller
             try:
-                from vehicle.drive_controller import I2C_Master_v02
-                self.drive_controller = I2C_Master_v02()
-            except Exception as ex:
-                logging.info("CFG:\tError setting up DRIVECONTROLLER over i2c - %s" % ex)
+                from vehicle.drive_controller import Drive_Controller
+                self.drive_controller = Drive_Controller(i2c_bus=shared_i2c_bus, debug=debug)
+                logging.info("DriveController erfolgreich initialisiert.")
+                return "Drive", self.drive_controller
+            except Exception as e:
+                logging.error(f"Fehler bei der Initialisierung des DriveControllers: {e}")
                 self.drive_controller = DummyDriveController()
-            return "DRIVECONTROLLER", self.drive_controller
+                return "Drive", self.drive_controller
+
+
+        elif addr == 0x68:
+            try:
+                from sensor.ruderlage import ruderlage_Sensor
+                self.ruder_sensor = ruderlage_Sensor(i2c_bus=shared_i2c_bus, debug=debug)
+            except Exception as ex:
+                logging.warning("CFG:\tError setting up Ruderlage over i2c - %s" % ex)
+            return "Ruderlage", self.ruder_sensor
 
         else:
             return "unknown", None
-
-class DummyCameraController(object):
-    def __init__(self, resources_folder):
-        self.enabled = False
-        from PIL import Image
-        temp_image_path = os.path.join(resources_folder, 'camera.jpg')
-        self._last_img = Image.open(temp_image_path)
-
-    def capture_now(self):
-        if self.enabled:
-            logging.debug("CAM:\tCapture image.")
-        pass
-
-    @property
-    def last_img(self):
-        return self._last_img
 
 class DummyDriveController(object):
     acc_level = 1.0
