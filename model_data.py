@@ -51,3 +51,9 @@ class POCVModelData:
         self.has_tasten = False
         self.tasten_tasten = 0.0
 
+        # Navigation
+        self.has_drive_controller = False
+        self.drive_final_steering = 0.0
+        self.drive_const_angle = 0.0            # Vorhaltewinkel
+        self.drive_speed = 0.0     # geschwindigkeit
+
