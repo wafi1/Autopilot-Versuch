@@ -107,12 +107,20 @@ class Drive_Controller:
         # Rudersteuerung beenden
         self.send_command(0, 0)
 
+        self.ready_for_new_command = True
+        if self.debug:
+            print("Drive_Controller: Bereit für neuen Befehl.")
+
     def halt(self):
         """
         Setzt alle Signale zurück und stoppt die Steuerung.
         """
         self.send_command(0, 0)
         logging.info("Drive: Steuerung angehalten.")
+
+    def is_ready(self):
+        """Überprüft, ob der Drive_Controller einsatzbereit ist."""
+        return self.i2c_bus is not None
 
 # Beispielnutzung
 if __name__ == "__main__":
