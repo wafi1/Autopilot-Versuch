@@ -3,11 +3,16 @@ import logging
 
 class NavigationUnit:
     """ Coordinator between perception, navigation commands, and drive control. """
+class NavigationUnit:
+    """ Coordinator between perception, navigation commands, and drive control. """
     
     def __init__(self, perception_unit, drive_controller, vehicle_constants):
-        self._perception_unit = perceptionunit
+        self._perception_unit = perception_unit
         self._drive_controller = drive_controller
         self._vehicle_constants = vehicle_constants
+
+        if self._drive_controller is None:
+            raise ValueError("Drive Controller darf nicht None sein!")
         
         # local components
         self._heading_ctrl = BasicPIDControl(
@@ -22,6 +27,7 @@ class NavigationUnit:
         self._enabled = False
         self._desired_heading = 0.0
         self._angle_const = 0.0  # Offset for consistent rudder adjustments
+        logging.debug(f"Drive controller passed to NavigationUnit: {drive_controller}")
 
     @property
     def auto_mode_enabled(self):
@@ -34,7 +40,7 @@ class NavigationUnit:
 
         # Sensor readings
         observed_heading = self._perception_unit.observed_heading
-        observed_rudder = self._perception_unit.observed_ruder
+        observed_ruder = self._perception_unit.observed_ruder
         desired_heading = self._desired_heading
 
         # Apply Kalman filter to observed heading
@@ -68,11 +74,26 @@ class NavigationUnit:
             "NAV: Steering Adjustment (PID + angle_const): %f", final_steering
         )
 
+        if self._drive_controller is None:
+            raise ValueError("Drive Controller wurde nicht initialisiert!")
+
+        if not self._drive_controller.is_ready():
+            logging.warning("Drive Controller ist nicht bereit.")
+            return
+
+        # Logik für Navigation
+        logging.info("Navigation wird ausgeführt.")
+
         # Send commands to the drive controller
         try:
             self._drive_controller.set_steering(final_steering)
+            logging.debug(
+                "NAV: Steering sent to Drive (PID + angle_const): %f",
+                final_steering,
+            )
         except Exception as ex:
             logging.exception("Navigation: Drive controller update error - %s", ex)
+
 
     def update_angle_const(self, recent_adjustments):
         """ Update angle_const based on recent steering adjustments. """
