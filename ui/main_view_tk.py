@@ -1,8 +1,9 @@
-﻿import logging
+import logging
 from tkinter import *
 import tkinter.ttk as ttk
 import sys
 import threading
+import os
 
 
 class MainView(Frame, object):
@@ -90,15 +91,14 @@ class InfoFrame(Frame, object):
         self.exit_button = Button(self, text="Exit", command=self.on_exit, height=2, width=10)
         self.exit_button.grid(row=12, columnspan=2, pady=10)  # Positioniere den Exit-Button
 
-   # def stop_threads():
-        # Falls Threads verwendet werden, hier stoppen
-    #    for thread in threading.enumerate():
-     #       if thread is not threading.main_thread():
-      #          thread.join()
 
     def on_exit(self):
         """Beendet das Script."""
-        self._view_controller.set_exit_mode()
+        print("Programm wird beendet...")
+
+        root = self.winfo_toplevel()
+        root.destroy()  # Beende die Hauptschleife
+        
         
 
 class ControlsFrame(Frame, object):
@@ -194,5 +194,9 @@ class ControlsFrame(Frame, object):
         self._view_controller.set_auto_pilot_mode()
 
 
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = App(root)
+    root.mainloop()
     
 
