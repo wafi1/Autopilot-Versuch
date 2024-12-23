@@ -12,7 +12,7 @@ from sensor.Tasten import TASTEN_Sensor
 from sensor.ruderlage import ruderlage_Sensor
 
 
-logging.error(f"Fehler bei der Initialisierung des Drive_Controllers: {e}")
+#logging.error(f"Fehler bei der Initialisierung des Drive_Controllers: {e}")
 
 class FishPiConfig(object):
     _devices = []
