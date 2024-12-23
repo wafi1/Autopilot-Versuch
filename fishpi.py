@@ -93,9 +93,7 @@ class FishPi:
         logging.info("FISHPI:\tLaunching UI...")
         """ naechste Zeile gext, drei Zeilen zugefügt """
         ui.controller.run_main_view_tk(kernel) if self.selected_mode == FishPiRunMode.Local else ui.controller.run_main_view_wx(self.config)
-        #root = tk.Tk()  # Erstellen des Tkinter-Hauptfensters
-        #main_view = MainView(root, kernel)  # MainView wird das root-Objekt übergeben
-        #root.mainloop()  # Starte die Tkinter-Ereignisschleife
+
     
         logging.info("FISHPI:\tProgram complete - exiting.")
         return 0
@@ -142,6 +140,10 @@ class FishPi:
         """ Handle invalid mode selection. """
         logging.error("FISHPI:\tInvalid mode selected! Exiting.")
         return 1
+    
+    def stop(self):
+        self.stop_flag = True
+        print("FishPi wird beendet...")
 
 
 def main():
@@ -152,5 +154,21 @@ def main():
 
 
 if __name__ == "__main__":
+    import tkinter as tk
     status = main()
     sys.exit(status)
+
+    FishPi = FishPiApp()
+
+    def on_exit():
+        FishPi.stop()
+        root.destroy()
+        
+    root = tk.Tk()
+    root.title("FishPi Controller")
+
+    
+    exit_button = tk.Button(root, text="Beenden", command=on_exit)
+    on_exit_button.pack(pady=20)
+
+    root.mainloop()
