@@ -3,8 +3,6 @@ import logging
 
 class NavigationUnit:
     """ Coordinator between perception, navigation commands, and drive control. """
-class NavigationUnit:
-    """ Coordinator between perception, navigation commands, and drive control. """
     
     def __init__(self, perception_unit, drive_controller, vehicle_constants):
         self._perception_unit = perception_unit
@@ -32,36 +30,40 @@ class NavigationUnit:
     @property
     def auto_mode_enabled(self):
         return self._enabled
+    
+    @staticmethod
+    def calculate_angle_difference(angle1, angle2):
+        """Berechnet die kürzeste Differenz zwischen zwei Winkeln (0–360°)."""
+        diff = (angle2 - angle1 + 180) % 360 - 180
+        return diff if diff != -180 else 180
+
 
     def update(self):
+ 
         """ Update drive output for new observations. """
         if not self._enabled:
             return
 
         # Sensor readings
         observed_heading = self._perception_unit.observed_heading
-        observed_ruder = self._perception_unit.observed_ruder
-        desired_heading = self._desired_heading
+        desired_heading = self._perception_unit.observed_navigation
 
         # Apply Kalman filter to observed heading
         filtered_heading = self._kalman_filter.update(observed_heading)
 
-        # Adjust for 360-degree wrapping
-        if filtered_heading > 270 and desired_heading < 90:
-            desired_heading += 360
-        elif filtered_heading < 90 and desired_heading > 270:
-            filtered_heading += 360
-
+        # Calculate shortest angle difference
+        error = self.calculate_angle_difference(filtered_heading, desired_heading)
+        
         logging.debug(
-            "NAV: Filtered Heading vs Desired Heading: (%f) vs (%f)",
-            filtered_heading, desired_heading,
+            "NAV: Filtered Heading=%f, Desired Heading=%f, Error=%f",
+            filtered_heading, desired_heading, error,
         )
 
         # Calculate PID response
         dt = 1  # Assuming 1-second update intervals
         try:
             steering_adjustment = self._heading_ctrl.update(
-                desired_heading, filtered_heading, dt
+                v_d=desired_heading, v_m=filtered_heading, dt=dt
             )
         except Exception as ex:
             logging.exception("Navigation: PID update error - %s", ex)
@@ -70,29 +72,20 @@ class NavigationUnit:
         # Include angle_const in steering adjustment
         final_steering = steering_adjustment + self._angle_const
 
-        logging.debug(
-            "NAV: Steering Adjustment (PID + angle_const): %f", final_steering
-        )
+        logging.debug("NAV: Final Steering Adjustment: %f", final_steering)
 
-        if self._drive_controller is None:
-            raise ValueError("Drive Controller wurde nicht initialisiert!")
-
+        # Check drive controller readiness
         if not self._drive_controller.is_ready():
-            logging.warning("Drive Controller ist nicht bereit.")
+            logging.warning("Drive Controller is not ready.")
             return
-
-        # Logik für Navigation
-        logging.info("Navigation wird ausgeführt.")
 
         # Send commands to the drive controller
         try:
             self._drive_controller.set_steering(final_steering)
-            logging.debug(
-                "NAV: Steering sent to Drive (PID + angle_const): %f",
-                final_steering,
-            )
+            logging.debug("NAV: Steering command sent: %f", final_steering)
         except Exception as ex:
             logging.exception("Navigation: Drive controller update error - %s", ex)
+
 
 
     def update_angle_const(self, recent_adjustments):
