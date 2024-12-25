@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 from tkinter import *
 import tkinter.ttk as ttk
 import sys
