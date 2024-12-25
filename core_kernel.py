@@ -1,11 +1,11 @@
 import smbus
 import logging
-from i2c_comm import I2CComm
 from localconfig import FishPiConfig
 from model_data import POCVModelData
 from control.navigation import NavigationUnit
 from perception.world import Perception_Unit
 
+kurs_übernommen = False
 
 class FishPiKernel:
     """Koordinator zwischen verschiedenen Schichten im FishPi-System."""
@@ -18,10 +18,7 @@ class FishPiKernel:
         """Initialisiert den FishPiKernel mit der bereitgestellten Konfiguration."""
         self.config = config
         self.debug = debug
-        
-        # I2C-Bus initialisieren
-        #self.i2c_comm = I2CComm(bus_num=1, addr=self.ADDR)
-        #self.i2c_comm.initialize()  # Setzt den Port A des I2C-Geräts als Ausgang
+
 
         self.BUSNR   = 1      # I2C-Bus-Nummer
         self.ADDR    = 0x20   # MCP23017 I2C-Adresse
@@ -41,18 +38,6 @@ class FishPiKernel:
         self._vehicle_constants = config.vehicle_constants
         self._drive_controller = config.drive_controller
 
-        #if config.drive_controller is None:
-        #    logging.error("Drive_Controller wurde im Kernel nicht initialisiert!")
-        #return
-        
-        #self._drive_controller = config.drive_controller
-        #logging.info("Drive_Controller erfolgreich zugewiesen.")
-        #device_name, controller = self._drive_controller.lookup(0x21)
-        #if controller:
-        #    logging.info("Drive_Controller erfolgreich gefunden und bereit.")
-        #else:
-        #    logging.error("Drive_Controller konnte nicht gefunden werden.")
-        
         # Datenklasse
         self.data = POCVModelData()
         
@@ -68,28 +53,7 @@ class FishPiKernel:
         self.correct_mode()
         self._perception_unit.update(self.data)
         self._navigation_unit.update()
-        #self._drive_controller.update()
 
-   # def i2c_write(self, iodira, gpioa):
-   #     """Hilfsmethode, um Daten auf den I2C-Bus zu schreiben."""
-   #     self.i2c_comm.write_data(iodira, gpioa)
-        
-   # def i2c_read(self, register):
-   #     """Hilfsmethode, um Daten vom I2C-Bus zu lesen."""
-   #     return self.i2c_comm.read_data(register)
-
-
-    
-    # Weitere Methoden wie read_compass, read_udp, usw. bleiben unverändert...
-
- #   def update(self):
- #       """Main update loop for sensors, perception, and control."""
- #       self.read_sensors()
- #       self.ui_man()
- #       self.control_mode()
- #       self.correct_mode()
- #       self._perception_unit.update(self.data)
- #       self._navigation_unit.update()
 
     def read_sensors(self):
         """Read data from all sensors and update model data."""
@@ -192,13 +156,17 @@ class FishPiKernel:
 
     def control_mode(self):
         """Control mode logic based on current mode."""
-        if self.data.mode == 1:       
-            self.data.navigation_heading = self.data.compass_heading
+        if self.data.mode == 1:
+            global kurs_übernommen
+            if not kurs_übernommen:
+                self.data.navigation_heading = self.data.compass_heading
+                kurs_übernommen = True  # Markiert den Kurs als übernommen
             self.data.has_mode = True
         
         elif self.data.mode == 2:
             self.data.navigation_heading = self.data.udp_KPK
             self.data.has_mode = True
+            kurs_übernommen = False
         # Other control modes go here...
     
     def correct_mode(self):
@@ -210,6 +178,7 @@ class FishPiKernel:
             head = (head - 1) % 360
             self.data.navigation_heading = head
         # Handle other modes...
+    
 
     def set_perception_unit(self, gainp, gaini, gaind):
         """Setzt die PID-Werte in der PerceptionUnit."""
@@ -242,6 +211,7 @@ class FishPiKernel:
         self.data.navigation_heading = 0
         self.halt()
         self._navigation_unit.stop()
+        kurs_übernommen = False
         self.i2c_bus.write_byte_data(self.ADDR, self.IODIRA, self.WUERFEL[8]) 
         self.i2c_bus.write_byte_data(self.ADDR, self.GPIOA, self.WUERFEL[1])
 
@@ -249,11 +219,6 @@ class FishPiKernel:
         """Stop all control systems."""
         self._navigation_unit.stop()
         self._drive_controller.halt()
-
-  #  def i2c_write(self, iodira, gpioa):
-  #      """Helper method to write to I2C bus."""
-  #      self.i2cBus.write_byte_data(self.ADDR, self.IODIRA, iodira)
-  #      self.i2cBus.write_byte_data
 
     def exit_mode(self):
         logging.info("FISHPI:\tBeenden des Programms...")
