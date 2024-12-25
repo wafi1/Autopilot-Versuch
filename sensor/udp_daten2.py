@@ -29,35 +29,47 @@ class OPENCPN_Sensor:
             data, addr = self.sock.recvfrom(1024)
             datalist = data.decode('utf-8').split(',')
 
-            # Überprüfen, ob es sich um den erwarteten Datensatz handelt
+            # Überprüfen, um welchen Datensatz es sich handelt
             if datalist[0] == "$ECRMB":
-                # Parse die Daten
-                KPK = float(datalist[11])
-                Dist = float(datalist[10])
-                speed = float(datalist[12])
+                # Verarbeiten des ECRMB-Datensatzes
+                try:
+                    KPK = float(datalist[11])
+                    Dist = float(datalist[10])
+                except ValueError:
+                    KPK = self.oldKPK
+                    Dist = self.oldDist
+                speed = self.oldspeed  # Geschwindigkeit bleibt unverändert
 
-                # Speichern der aktuellen Werte für den nächsten Durchlauf
+                # Speichern der aktuellen Werte
                 self.oldKPK = KPK
                 self.oldDist = Dist
+
+            elif datalist[0] == "$RMC":
+                # Verarbeiten des RMC-Datensatzes
+                try:
+                    speed = float(datalist[7]) # Knoten
+                except ValueError:
+                    speed = self.oldspeed
+                KPK = self.oldKPK  # Kurs bleibt unverändert
+                Dist = self.oldDist  # Distanz bleibt unverändert
+
+                # Speichern der aktuellen Geschwindigkeit
                 self.oldspeed = speed
+
             else:
-                # Rückgabe der alten Werte, falls der Datensatz nicht passt
+                # Rückgabe der alten Werte, falls kein erwarteter Datensatz vorliegt
                 KPK = self.oldKPK
                 Dist = self.oldDist
                 speed = self.oldspeed
 
-                # Debugging-Ausgabe
-                if self.debug:
-                    logging.debug("SENSOR:\tOPENCPN\tKPK: %f, Dist: %f, Speed: %f", KPK, Dist, speed)
+            # Debugging-Ausgabe
+            if self.debug:
+                logging.debug("SENSOR:\tOPENCPN\tKPK: %f, Dist: %f, Speed: %f", KPK, Dist, speed)
 
             return KPK, Dist, speed
 
         except socket.timeout:
             logging.warning("SENSOR:\tOPENCPN\tTimeout beim Empfangen der Daten.")
-            return self.oldKPK, self.oldDist, self.oldspeed
-        
-        except ValueError:
-            logging.error("SENSOR:\tOPENCPN\tFehler bei der Umwandlung der Daten in einen Float.")
             return self.oldKPK, self.oldDist, self.oldspeed
         
         except Exception as e:
@@ -75,10 +87,11 @@ if __name__ == "__main__":
 
     try:
         # Simuliere das Lesen von Sensordaten
-        KPK, Dist, speed = sensor.read_sensor()
-        print(f"Aktueller KPK-Wert: {KPK}")
-        print(f"Aktuelle Distanz: {Dist}")
-        print(f"Aktuelle Geschwindigkeit: {speed}")
+        while True:
+            KPK, Dist, speed = sensor.read_sensor()
+            print(f"Aktueller KPK-Wert: {KPK}")
+            print(f"Aktuelle Distanz: {Dist}")
+            print(f"Aktuelle Geschwindigkeit: {speed}")
     finally:
         # Stelle sicher, dass der Socket geschlossen wird, wenn das Programm beendet wird.
         sensor.close_socket()
