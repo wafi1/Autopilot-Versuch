@@ -1,6 +1,6 @@
 import logging
 
-class PerceptionUnit:
+class Perception_Unit:
     def __init__(self, vehicle_constants, data):
         """
         Initialisiert das PerceptionUnit mit den Fahrzeugkonstanten und Daten.
