@@ -13,6 +13,7 @@ class MainView(Frame, object):
         super(MainView, self).__init__(master, bd=1, relief=GROOVE)
         self.pack()
         self.create_widgets(master, view_controller)
+        self._view_controller = view_controller
     
     def create_widgets(self, master, view_controller):
         """ Create widgets for view. """
@@ -51,7 +52,7 @@ class MapFrame(Frame, object):
 
         # GPS heading info
         Label(self, text = "Kurs:", font=("Tempus Sans ITC", 30,"bold"), padx=5, pady=5, anchor=W, justify=LEFT).grid(row=1, sticky=W)
-        Label(self, textvariable=view_controller.model.compass_heading, font=("Tempus Sans ITC", 30,"bold")).grid(row=1, column=1)
+        Label(self, textvariable=view_controller.model.basic_steer, font=("Tempus Sans ITC", 30,"bold")).grid(row=1, column=1)
         Label(self, text = "Speed to waypoint:", font=("Tempus Sans ITC", 20,"bold"), padx=5,pady=5, anchor=W, justify=LEFT).grid(row=2, sticky=W)
         Label(self, textvariable=view_controller.model.udp_speed, font=("Tempus Sans ITC", 20,"bold")).grid(row=2, column=1)
 
