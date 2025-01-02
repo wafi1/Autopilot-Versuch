@@ -21,7 +21,9 @@ class OPENCPN_Sensor:
         self.oldKPK = 0
         self.oldDist = 0
         self.oldspeed = 0
+        self.oldtrack = 0
 
+        
     def read_sensor(self):
         """ Liest die Sensordaten vom Socket und verarbeitet sie. """
         try:
@@ -39,6 +41,7 @@ class OPENCPN_Sensor:
                     KPK = self.oldKPK
                     Dist = self.oldDist
                 speed = self.oldspeed  # Geschwindigkeit bleibt unverändert
+                track = self.oldtrack
 
                 # Speichern der aktuellen Werte
                 self.oldKPK = KPK
@@ -47,36 +50,42 @@ class OPENCPN_Sensor:
             elif datalist[0] == "$RMC":
                 # Verarbeiten des RMC-Datensatzes
                 try:
-                    speed = float(datalist[7]) # Knoten
+                    speed = float(datalist[7])  # Knoten
+                    track = float(datalist[8])  # Knoten
                     if speed == 0:
                         speed = 6
                 except ValueError:
                     speed = self.oldspeed
+                    track = self.oldtrack
                 KPK = self.oldKPK  # Kurs bleibt unverändert
                 Dist = self.oldDist  # Distanz bleibt unverändert
 
                 # Speichern der aktuellen Geschwindigkeit
                 self.oldspeed = speed
+                self.oldtrack = track
 
             else:
                 # Rückgabe der alten Werte, falls kein erwarteter Datensatz vorliegt
                 KPK = self.oldKPK
                 Dist = self.oldDist
                 speed = 6
+                track = self.oldtrack
 
             # Debugging-Ausgabe
             if self.debug:
-                logging.debug("SENSOR:\tOPENCPN\tKPK: %f, Dist: %f, Speed: %f", KPK, Dist, speed)
+                logging.debug("SENSOR:\tOPENCPN\tKPK: %f, Dist: %f, Speed: %f, Track: %f", KPK, Dist, speed, track)
 
-            return KPK, Dist, speed
+            return KPK, Dist, speed, track
 
         except socket.timeout:
             logging.warning("SENSOR:\tOPENCPN\tTimeout beim Empfangen der Daten.")
-            return self.oldKPK, self.oldDist, self.oldspeed
-        
+            return self.oldKPK, self.oldDist, self.oldspeed, self.oldtrack
+
         except Exception as e:
             logging.error("SENSOR:\tOPENCPN\tUnbekannter Fehler: %s", str(e))
-            return self.oldKPK, self.oldDist, self.oldspeed
+            return self.oldKPK, self.oldDist, self.oldspeed, self.oldtrack
+    
+
 
     def close_socket(self):
         """ Stellt sicher, dass der Socket geschlossen wird, wenn er nicht mehr benötigt wird. """
@@ -94,6 +103,7 @@ if __name__ == "__main__":
             print(f"Aktueller KPK-Wert: {KPK}")
             print(f"Aktuelle Distanz: {Dist}")
             print(f"Aktuelle Geschwindigkeit: {speed}")
+            print(f"Aktueller GPS Kurs: {track}")
     finally:
         # Stelle sicher, dass der Socket geschlossen wird, wenn das Programm beendet wird.
         sensor.close_socket()
