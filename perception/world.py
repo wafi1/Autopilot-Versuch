@@ -52,29 +52,28 @@ class Perception_Unit:
     def update(self, data):
         """ Update observed speed, heading, location from model and sensor data. """
         try:
+            # Kompassdaten
             if data.has_compass:
-                compass_heading = data.compass_heading
+                self._observed_heading = data.compass_heading
 
+            # GPS-basierte Steuerung
+            #if data.has_navigation:
+            self._observed_heading = data.basic_steer  # Nutzt Steuerkurs von Navigation
+
+            # Geschwindigkeit
             if data.has_udp:
                 self._observed_speed = data.udp_speed
 
+            # Ruderwinkel
             if data.has_ruder:
                 self._observed_ruder = data.ruder_Winkel
-            
-            # temp - use GPS speed
-            if data.has_udp:
-                self._observed_speed = data.udp_speed 
 
-            # temp - average compass and GPS headings
-            try:       
-                if data.has_compass:
-                    self._observed_heading = compass_heading
-            except Exception as ex:
-                logging.exception("Navigation:\tError in update loop driver problem - %s" % ex)
-
-            # Update observed_navigation
+            # Navigation Heading
             self.set_observed_navigation(data.navigation_heading)
-            logging.debug(f"Perception: navigation Werte gesetzt: {self._observed_navigation}")
+
+            logging.debug(f"Perception: Updated observed_heading={self._observed_heading}, "
+                      f"observed_navigation={self._observed_navigation}")
 
         except Exception as ex:
-            logging.exception(f"Navigation:\tError in update loop - {ex}")
+            logging.exception(f"Perception: Fehler in update – {ex}")
+
