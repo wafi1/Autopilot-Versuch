@@ -11,6 +11,7 @@ class POCVModelData:
         self.udp_KPK = 0.0
         self.udp_Dist = 0.0
         self.udp_speed = 0.0
+        self.udp_track = 0.0
 
         # PID Gains
         self.has_pid = False
@@ -26,9 +27,12 @@ class POCVModelData:
         # Navigation
         self.has_navigation = False
         self.navigation_heading = 0.0
+        self.basic_steer = 0.0
 
         # Korrekturen
         self.has_mode = False
+        self.kurs_comp = False
+        self.kurs_gps = False
         self.mode = 0
 
         # Tasten

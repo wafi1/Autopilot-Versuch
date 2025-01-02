@@ -5,9 +5,9 @@ from model_data import POCVModelData
 from control.navigation import NavigationUnit
 from perception.world import Perception_Unit
 
-kurs_übernommen = False
-LED_auto = False
-LED_stand = False
+#kurs_comp = False
+#kurs_gps = False
+#LED_stand = False
 
 class FishPiKernel:
     """Koordinator zwischen verschiedenen Schichten im FishPi-System."""
@@ -38,6 +38,7 @@ class FishPiKernel:
         self._vehicle_constants = config.vehicle_constants
         self._drive_controller = config.drive_controller
         self.current_LED = None
+        self.basic_steer = 0
 
         # Datenklasse
         self.data = POCVModelData()
@@ -83,12 +84,13 @@ class FishPiKernel:
 
     def read_udp(self):
         try:
-            (KPK, Dist, speed) = self._udp_sensor.read_sensor()
+            (KPK, Dist, speed, track) = self._udp_sensor.read_sensor()
             self.data.udp_KPK = float(round(KPK))
             self.data.udp_Dist = float(round(Dist))
             self.data.udp_speed = float(round(speed))  # Assuming `speed` exists in `data`
+            self.data.udp_track = float(round(track))
             self.data.has_udp = True
-            logging.debug(f"CORE:\tUDP KPK: {self.data.udp_KPK}, Dist: {self.data.udp_Dist}, Speed: {self.data.udp_speed}")
+            logging.debug(f"CORE:\tUDP KPK: {self.data.udp_KPK}, Dist: {self.data.udp_Dist}, Speed: {self.data.udp_speed}, Track: {self.data.udp_track}")
         except Exception as ex:
             logging.error("CORE:\tUDP module failure")
             self.data.has_udp = False
@@ -151,34 +153,46 @@ class FishPiKernel:
 
     def control_mode(self):
         """Control mode logic based on current mode."""
-        global kurs_übernommen, LED_auto, LED_stand
+        global LED_stand, kurs_comp, kurs_gps
 
-        if self.data.mode == 1:  # Manual Mode
-            if not kurs_übernommen:
-                self.data.navigation_heading = self.data.compass_heading
-                self.current_LED = 'LED1'
-                kurs_übernommen = True
-                LED_auto = False
-                LED_stand = False
+        try:
+            # Manuelle Steuerung
+            if self.data.mode == 1:  # Manual Mode
+                self.data.basic_steer = self.data.compass_heading  # Nutzt Kompassdaten
+                self.data.navigation_heading = self.data.compass_heading  # Gleicher Kurs
+                if not self.data.kurs_comp:
+                    self.current_LED = 'LED1'
+                    kurs_comp = True
+                    kurs_gps = False
+                    LED_stand = False
                 self.data.has_mode = True
 
-        elif self.data.mode == 2:  # Auto Mode                   
-            self.data.navigation_heading = self.data.udp_KPK
-            if not LED_auto:
-                self.current_LED = 'LED2'
-                LED_auto = True
-                kurs_übernommen = False
-                LED_stand = False
-            self.data.has_mode = True
+            # Automatischer Steuerung
+            elif self.data.mode == 2:  # Auto Mode
+                self.data.basic_steer = self.data.udp_track  # Nutzt GPS-Daten
+                self.data.navigation_heading = self.data.udp_KPK  # GPS-basierter Kurs
+                if not self.data.kurs_gps:
+                    self.current_LED = 'LED2'
+                    kurs_gps = True
+                    kurs_comp = False
+                    LED_stand = False
+                self.data.has_mode = True
 
-        elif self.data.mode == 4:  # Standby Mode
-            if not LED_stand:
-                self.current_LED = 'LED3'
-                LED_stand = True
-                kurs_übernommen = False
-                LED_auto = False
+            # Standby-Modus
+            elif self.data.mode == 4:  # Standby Mode
+                self.data.basic_steer = self.data.compass_heading  # Default zu Kompass
+                if not LED_stand:
+                    self.current_LED = 'LED3'
+                    LED_stand = True
+                    kurs_comp = False
+                    kurs_gps = False
 
-        logging.debug(f"Kernel: navigation Werte gesetzt: {self.data.navigation_heading}")
+            # Debugging für gesetzte Werte
+            logging.debug(f"Kernel: mode={self.data.mode}, basic_steer={self.data.basic_steer}, "
+                          f"navigation_heading={self.data.navigation_heading}, current_LED={self.current_LED}")
+
+        except Exception as ex:
+            logging.exception(f"Kernel: Fehler in control_mode – {ex}")
 
     def LED_mode(self):
         """Aktualisiert die LEDs basierend auf dem aktuellen Modus."""
