@@ -99,7 +99,7 @@ if __name__ == "__main__":
     try:
         # Simuliere das Lesen von Sensordaten
         while True:
-            KPK, Dist, speed = sensor.read_sensor()
+            KPK, Dist, speed, track = sensor.read_sensor()
             print(f"Aktueller KPK-Wert: {KPK}")
             print(f"Aktuelle Distanz: {Dist}")
             print(f"Aktuelle Geschwindigkeit: {speed}")

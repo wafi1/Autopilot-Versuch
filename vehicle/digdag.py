@@ -4,14 +4,14 @@ import smbus
 from threading import Lock
 
 
-class Drive_Controller:
+class DriveController:
     def __init__(self, address=0x21, i2c_bus=None, debug=False):
         self.debug = debug
         self.controller_address = address
         self.i2c_bus = i2c_bus or smbus.SMBus(1)
         self.command_lock = Lock()  # Sperre für parallele Befehle
         logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
-        logging.debug("Drive_Controller erfolgreich initialisiert.")
+        logging.debug("DriveController erfolgreich initialisiert.")
 
     def send_command(self, command_block):
         """
@@ -24,20 +24,22 @@ class Drive_Controller:
         except Exception as e:
             logging.error(f"Error sending command block: {e}")
 
+
     def calculate_pulse_duration(self, speed):
         """
         Berechnet die Dauer des Steuerimpulses basierend auf der Geschwindigkeit.
         """
         if speed <= 0:
             return 0
-        normalized_speed = max(0, min(speed / 6.8, 1))
+        normalized_speed = max(0, min(speed / 6.3, 1))
         return 2 - (1.5 * normalized_speed)
 
     def calculate_pwm_value(self, angle):
         """
         Berechnet den PWM-Wert basierend auf dem Winkel.
         """
-        return max(105, min(int(abs(angle) * 255 / 25), 255))  # Wertebereich: 100 bis 255
+        return max(102, min(int(abs(angle) * 255 / 25), 255))  # Wertebereich: 100 bis 255
+
 
     def control_ruder(self, final_steering, speed, angle_const=0):
         with self.command_lock:  # Sperre während der Steuerung aktivieren
@@ -75,25 +77,27 @@ class Drive_Controller:
                 time.sleep(0.05)  # Sicherstellen, dass die H-Brücke zurückgesetzt wird
 
             logging.debug("Control_ruder completed.")
+    
 
     def halt(self):
         """
         Stoppt alle Aktionen und setzt die Steuerung zurück.
         """
+        xbPin, bbPin, pwmPin = 1, 2, 3  # Beispiel-Pin-Nummern
         with self.command_lock:  # Sperre sicherstellen
-            self.send_command([3, 9])  # Backbord LOW
-            self.send_command([4, 9])  # XBPin LOW
-            logging.info("Drive_Controller gestoppt.")
+            self.send_command([3, 4])   # XBPin LOW
+            self.send_command([9, 0])   # BBPin LOW
+            logging.info("DriveController gestoppt.")
 
     def is_ready(self):
         """
-        Überprüft, ob der Drive_Controller bereit ist, neue Befehle anzunehmen.
+        Überprüft, ob der DriveController bereit ist, neue Befehle anzunehmen.
         """
         return not self.command_lock.locked()
 
 
 if __name__ == "__main__":
-    controller = Drive_Controller(debug=True)
+    controller = DriveController(debug=True)
 
     try:
         # Beispiel: Steuerbord mit Vorhaltewinkel

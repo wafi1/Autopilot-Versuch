@@ -26,7 +26,7 @@ class Perception_Unit:
         self._gainp = gainp
         self._gaini = gaini
         self._gaind = gaind
-        logging.debug(f"Updated PID values: gainp={gainp}, gaini={gaini}, gaind={gaind}")
+        logging.debug(f"WORLD: Updated PID values: gainp={gainp}, gaini={gaini}, gaind={gaind}")
     
     def observed_speed(self):
         return self._observed_speed
@@ -45,8 +45,8 @@ class Perception_Unit:
 
     def set_observed_navigation(self, value):
         if not isinstance(value, (int, float)):
-            raise ValueError("observed_navigation must be a number")
-        logging.debug(f"Setting observed_navigation to: {value}")
+            raise ValueError("WORLD: observed_navigation must be a number")
+        logging.debug(f"WORLD: Setting observed_navigation to: {value}")
         self._observed_navigation = value
     
     def update(self, data):
@@ -71,9 +71,9 @@ class Perception_Unit:
             # Navigation Heading
             self.set_observed_navigation(data.navigation_heading)
 
-            logging.debug(f"Perception: Updated observed_heading={self._observed_heading}, "
-                      f"observed_navigation={self._observed_navigation}")
+            logging.debug(f"WORLD: Perception: Updated observed_heading={self._observed_heading}, "
+                      f"WORLD: observed_navigation={self._observed_navigation}")
 
         except Exception as ex:
-            logging.exception(f"Perception: Fehler in update – {ex}")
+            logging.exception(f"WORLD: Perception: Fehler in update – {ex}")
 

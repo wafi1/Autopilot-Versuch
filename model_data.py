@@ -13,6 +13,7 @@ class POCVModelData:
         self.udp_speed = 0.0
         self.udp_track = 0.0
 
+
         # PID Gains
         self.has_pid = False
         self.pid_gainp = 0.0
@@ -27,13 +28,13 @@ class POCVModelData:
         # Navigation
         self.has_navigation = False
         self.navigation_heading = 0.0
-        self.basic_steer = 0.0
 
         # Korrekturen
         self.has_mode = False
-        self.kurs_comp = False
-        self.kurs_gps = False
         self.mode = 0
+        self.led1 = False
+        self.led2 = False
+        self.led3 = False
 
         # Tasten
         self.has_tasten = False
@@ -44,4 +45,5 @@ class POCVModelData:
         self.drive_final_steering = 0.0
         self.drive_const_angle = 0.0            # Vorhaltewinkel
         self.drive_speed = 0.0     # geschwindigkeit
+        self.basic_steer = 0.0
 

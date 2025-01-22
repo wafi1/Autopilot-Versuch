@@ -5,9 +5,6 @@ from model_data import POCVModelData
 from control.navigation import NavigationUnit
 from perception.world import Perception_Unit
 
-#kurs_comp = False
-#kurs_gps = False
-#LED_stand = False
 
 class FishPiKernel:
     """Koordinator zwischen verschiedenen Schichten im FishPi-System."""
@@ -37,8 +34,11 @@ class FishPiKernel:
         self._tasten_sensor = config.tasten_sensor
         self._vehicle_constants = config.vehicle_constants
         self._drive_controller = config.drive_controller
-        self.current_LED = None
+        self.current_LED = 0
         self.basic_steer = 0
+        self.LED1 = False
+        self.LED2 = False
+        self.LED3 = False
 
         # Datenklasse
         self.data = POCVModelData()
@@ -52,7 +52,7 @@ class FishPiKernel:
         self.read_sensors()
         self.ui_man()
         self.control_mode()
-        self.LED_mode()
+        #self.LED_mode()
         self._perception_unit.update(self.data)
         self._navigation_unit.update()
 
@@ -96,34 +96,34 @@ class FishPiKernel:
             self.data.has_udp = False
 
     def read_ruder(self):
-        from sensor.ruderausschlag import ruderlage_Sensor, get_ruderausschlag
-        sensor = ruderlage_Sensor(debug=True)
         try:
-            Winkel = get_ruderausschlag(sensor)
+            # Ruderwinkel auslesen
+            Winkel = self._ruder_sensor.read_sensor()
+        
+            # Verarbeitung der Ruderwinkel-Daten
             self.data.ruder_Winkel = Winkel * -1 - self.data.ruder_k
             if abs(Winkel) > 25:
                 self.set_pause_mode()
             self.data.has_ruder = True
             logging.debug(f"CORE:\tRuder angle: {self.data.ruder_Winkel}")
         except Exception as ex:
-            logging.error("CORE:\tRuder sensor failure {self._ruder_sensor.read_sensor}")
+            logging.error(f"CORE:\tRuder sensor failure: {ex}")
             self.data.has_ruder = False
+    
             
     def read_tasten(self):
-        from sensor.Tastensteuer import tasten_Sensor, get_tasten
-        sensor = tasten_Sensor(debug=True)
         try:
-            # Hole den aktuellen Tastenstatus
-            ktasten = get_tasten(sensor)
-            # Speichere den Tastenstatus in self.data
-            self.data.tasten_tasten = ktasten
+            # Tastenstatus auslesen
+            tasten_status = self._tasten_sensor.read_sensor()
+        
+            # Verarbeitung der Tastenstatus-Daten
+            self.data.tasten_status = tasten_status
             self.data.has_tasten = True
-            # Debugging-Ausgaben
-            logging.debug(f"CORE:\tTasten status: {self.data.tasten_tasten}")
-            #logging.debug(f"Tastenstatus (Rohwert): {self.data.tasten_tasten} (Dezimalwert), {bin(self.data.tasten_tasten)} (Binarwert)")
+            logging.debug(f"CORE:\tTasten status: {self.data.tasten_status}")
         except Exception as ex:
-            logging.error("CORE:\tTasten sensor failure")
+            logging.error(f"CORE:\tTasten sensor failure: {ex}")
             self.data.has_tasten = False
+
 
     def ui_man(self):
         try:
@@ -153,40 +153,41 @@ class FishPiKernel:
 
     def control_mode(self):
         """Control mode logic based on current mode."""
-        global LED_stand, kurs_comp, kurs_gps
-
+        
         try:
             # Manuelle Steuerung
             if self.data.mode == 1:  # Manual Mode
                 self.data.basic_steer = self.data.compass_heading  # Nutzt Kompassdaten
-                self.data.navigation_heading = self.data.compass_heading  # Gleicher Kurs
-                if not self.data.kurs_comp:
-                    self.current_LED = 'LED1'
-                    kurs_comp = True
-                    kurs_gps = False
-                    LED_stand = False
+                if not self.LED1:
+                    self.current_LED = 1
+                    self.LED_mode()
+                    self.LED1 = True
+                    self.LED2 = False
+                    self.LED3 = False
                 self.data.has_mode = True
 
             # Automatischer Steuerung
-            elif self.data.mode == 2:  # Auto Mode
-                self.data.basic_steer = self.data.udp_track  # Nutzt GPS-Daten
+            elif self.data.mode == 2:  # Auto Mode           
                 self.data.navigation_heading = self.data.udp_KPK  # GPS-basierter Kurs
-                if not self.data.kurs_gps:
-                    self.current_LED = 'LED2'
-                    kurs_gps = True
-                    kurs_comp = False
-                    LED_stand = False
+                self.data.basic_steer = self.data.udp_track 
+                if not self.LED2:
+                    self.current_LED = 2
+                    self.LED_mode()
+                    self.LED1 = False
+                    self.LED2 = True
+                    self.LED3 = False
                 self.data.has_mode = True
+                
 
             # Standby-Modus
             elif self.data.mode == 4:  # Standby Mode
-                self.data.basic_steer = self.data.compass_heading  # Default zu Kompass
-                if not LED_stand:
-                    self.current_LED = 'LED3'
-                    LED_stand = True
-                    kurs_comp = False
-                    kurs_gps = False
-
+                if not self.LED3:
+                    self.current_LED = 3
+                    self.LED_mode()
+                    self.LED1 = False
+                    self.LED2 = False
+                    self.LED3 = True
+                pass
             # Debugging für gesetzte Werte
             logging.debug(f"Kernel: mode={self.data.mode}, basic_steer={self.data.basic_steer}, "
                           f"navigation_heading={self.data.navigation_heading}, current_LED={self.current_LED}")
@@ -196,15 +197,16 @@ class FishPiKernel:
 
     def LED_mode(self):
         """Aktualisiert die LEDs basierend auf dem aktuellen Modus."""
-        if self.current_LED == 'LED1':  # Manual Mode
+        if self.current_LED == 1:  # Manual Mode
             self.i2c_bus.write_byte_data(self.ADDR, self.IODIRA, self.WUERFEL[8])
             self.i2c_bus.write_byte_data(self.ADDR, self.GPIOA, self.WUERFEL[0])
+            
 
-        elif self.current_LED == 'LED2':  # Auto Mode
+        elif self.current_LED == 2:  # Auto Mode
             self.i2c_bus.write_byte_data(self.ADDR, self.IODIRA, self.WUERFEL[8])
             self.i2c_bus.write_byte_data(self.ADDR, self.GPIOA, self.WUERFEL[2])
 
-        elif self.current_LED == 'LED3':  # Standby Mode
+        elif self.current_LED == 3:  # Standby Mode
             self.i2c_bus.write_byte_data(self.ADDR, self.IODIRA, self.WUERFEL[8])
             self.i2c_bus.write_byte_data(self.ADDR, self.GPIOA, self.WUERFEL[1])
 
@@ -224,13 +226,14 @@ class FishPiKernel:
         """Activate manual mode."""
         self.data.mode = 1
         self.halt()
+        self.data.navigation_heading = self.data.compass_heading
         self._navigation_unit.start()
         logging.debug(f"Kernel set manual mode: navigation Werte gesetzt: {self.data.navigation_heading}")
 
     def set_auto_pilot_mode(self):
         """Activate auto-pilot mode."""
         self.data.mode = 2
-        self.halt()      
+        self.halt()
         self._navigation_unit.start()
         logging.debug(f"Kernel set auto mode: navigation Werte gesetzt: {self.data.navigation_heading}")
 
@@ -239,7 +242,9 @@ class FishPiKernel:
         self.data.mode = 4
         self.data.navigation_heading = 0
         self.halt()
+        self.data.basic_steer = self.data.compass_heading  # Nutzt Kompassdaten
         self._navigation_unit.stop()
+
 
     def halt(self):
         """Stop all control systems."""

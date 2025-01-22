@@ -5,10 +5,12 @@ import os
 import time
 from raspberrypi import i2c_bus
 
-# Logging einrichten
-#logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
 
 class TASTEN_Sensor:
+    
+    #Variablen
+    #  how long to wait when we're looking for a response
+    
     def __init__(self, address=0x20, i2c_bus=None, debug=False):
         self.debug = debug
         self.ADDR = address  # Standardadresse für den MCP23008
@@ -37,41 +39,18 @@ class TASTEN_Sensor:
 
 
     def read_sensor(self):
-        """
-        Liest den aktuellen Status der Tasten (GPIOB) und gibt den Wert zurück.
-        """
+        data = 64
         try:
-            # Lese den Wert von Port B
             data = self.i2c_bus.read_byte_data(self.ADDR, self.GPIOB)
-        
-            # Speichere die Daten für zukünftige Fehlerbehandlung
             self.olddata = data
-
-            if self.debug:
-                logging.debug(f"Tastenstatus: (data)")
-
-            # Rückgabe des gelesenen Datenwerts
+            #print "Tasten", data
             return data
-        except Exception as e:
-            # Fehlerbehandlung, falls ein Fehler auftritt
-            logging.error(f"Fehler beim Lesen des Tastenstatus: {str(e)}")
-        
-            # Geben Sie den alten Wert zurück, wenn ein Fehler auftritt
+        except:
             return self.olddata
+            logging.exception("Tasten py:\tError in update loop (Tasten) - %s" % ex)
 
-                # Beispiel zum Testen der Tasten-Sensor-Klasse
-if __name__ == "__main__":
-    sensor = TASTEN_Sensor(debug=True)
+        
+    
+    
+        
 
-    # Simuliere das Lesen der Tasten alle 1 Sekunde
-    try:
-        while True:
-            # Lese den Sensorwert und gebe ihn aus
-            data = sensor.read_sensor()
-            if data is not None:
-                logging.info(f"Aktueller Tastenstatus: data)")
-            else:
-                logging.warning("Kein gültiger Tastenstatus verfügbar.")
-            time.sleep(1)
-    except KeyboardInterrupt:
-        logging.info("Messung abgebrochen.")
